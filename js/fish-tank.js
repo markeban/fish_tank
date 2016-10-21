@@ -10,12 +10,12 @@ var fishes = [];
 var bubbles = [];
 var fishValues = [
   {
-    startingPosition: [1000, 200],
+    startingPositionFactor: [0.8, 0.3],
     directionRight: true,
     colors: ["green", "yellow"] 
   },
   {
-    startingPosition: [300, 400],
+    startingPositionFactor: [0.3, 0.5],
     directionRight: false,
     colors: ["red", "purple"]
   }
@@ -23,10 +23,10 @@ var fishValues = [
 var weeds = [];
 var weedValues = [
   {
-    startingPosition: [view.bounds.right * 0.8, view.bounds.bottom]
+    startingXPositionFactor: 0.8
   },
   {
-    startingPosition: [view.bounds.right * 0.77, view.bounds.bottom]
+    startingXPositionFactor: 0.77
   }
 ];
 var diver;
@@ -36,6 +36,32 @@ values.invMass = 1 / values.mass;
 
 var path, springs, mouseLocation;
 var size = view.size * [1.2, 1];
+
+function onResize() { // 1st
+  bubbles = []; // kill all bubbles on resize
+  if (path)
+    path.remove();
+  size = view.bounds.size * [2, 1];
+  path = createPath(0.1);
+  drawFishes();
+  drawSand();
+  drawWeeds();
+  drawChest();
+  drawDiver();
+}
+
+function onFrame(event) { // 4th
+  updateWave(path);
+  updateFishes();
+  riseBubbles();
+  swayWeeds(event);
+  equalizeDiver(event); 
+}
+
+function onMouseMove(event) {
+  mouseLocation = event.point;
+}
+
 
 var Spring = function(a, b, strength, restLength) { //3rd (as many times segments)
   this.a = a;
@@ -122,29 +148,6 @@ function onKeyDown(event) {
   }
 }
 
-function onResize() { // 1st
-  if (path)
-    path.remove();
-  size = view.bounds.size * [2, 1];
-  path = createPath(0.1);
-  drawFishes();
-  drawSand();
-  drawWeeds();
-  drawChest();
-  drawDiver();
-}
-
-function onFrame(event) { // 4th
-  updateWave(path);
-  updateFishes();
-  riseBubbles();
-  swayWeeds(event);
-  equalizeDiver(event); 
-}
-
-function onMouseMove(event) {
-  mouseLocation = event.point;
-}
 
 
 function drawFishes() {
@@ -152,7 +155,7 @@ function drawFishes() {
     var fish = new Fish(fishValues[i]);
     fish.wigglePosition = 2;
     fish.directionRight = fishValues[i].directionRight;
-    fish.fishBody.position = fishValues[i].startingPosition;
+    fish.fishBody.position = [fishValues[i].startingPositionFactor[0] * view.bounds.right, fishValues[i].startingPositionFactor[1] * view.bounds.bottom];
     if (!fishValues[i].directionRight) {
       fish.fishBody.scale(-1, 1);
     }
@@ -292,12 +295,13 @@ function riseBubbles() {
 }
 
 function drawWeeds() {
+  weeds = [];
   for (var i=0; i < weedValues.length; i++) {
-    weeds[i] = drawWeed(weedValues[i]);
+    weeds.push(new Weed(weedValues[i]));
   }
 }
 
-function drawWeed(weedValues) {
+function Weed(weedValue) {
   var weed = new Path({
     strokeColor: "green",
     strokeWidth: 15,
@@ -305,11 +309,13 @@ function drawWeed(weedValues) {
   });
   var segment = 25;
   for (var i=0; i < 6; i++) {
-    weed.add(new Point(weedValues.startingPosition[0], weedValues.startingPosition[1] - segment));
+    weed.add(new Point((weedValue.startingXPositionFactor * view.bounds.right), view.bounds.bottom - segment));
     segment += 50;
   }
-  return weed;
+  this.properties = weed;
+  
 }
+
 
 function swayWeeds(event) {
   for (var i=0; i < weeds.length; i++) {
@@ -318,12 +324,12 @@ function swayWeeds(event) {
 }
 
 function swayWeed(weed, event) {
-  for (var i=1; i < weed.segments.length; i++) {
-    var segment = weed.segments[i];
+  for (var i=1; i < weed.properties.segments.length; i++) {
+    var segment = weed.properties.segments[i];
     var sinus = Math.sin(event.time * 3 + i);
     segment.point.x += sinus * 0.5;
   }
-  weed.smooth();
+  weed.properties.smooth();
 }
 
 function drawSand() {
